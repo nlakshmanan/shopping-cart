@@ -16,7 +16,9 @@ const MediaCardStyles = makeStyles({
     maxWidth: 345,
   },
   media: {
-    height: 140,
+    height: '100',
+    width: 'auto',
+    paddingRight: '56.25%'
   },
 });
 
