@@ -18,6 +18,7 @@ import ListItem from '@material-ui/core/ListItem';
 import AddCircleOutlinedIcon from '@material-ui/icons/AddCircleOutlined';
 import RemoveCircleIcon from '@material-ui/icons/RemoveCircle';
 import DeleteIcon from '@material-ui/icons/Delete';
+import Tooltip from '@material-ui/core/Tooltip';
 
 const useStyles = makeStyles(theme => ({
   card: {
@@ -67,9 +68,7 @@ const CartItemStyles = makeStyles(theme => ({
 
 
 const sizeList = ['S','M','L','XL'];
-const ButtonSize = ({size}) => (
-  <Button variant="outlined" color="primary">{size}</Button>
-)
+
 
 const SelectSize = ({ setItemSize, selectedSize, size }) => {
   return (
@@ -85,9 +84,34 @@ const SelectSize = ({ setItemSize, selectedSize, size }) => {
   );
 }
 
+const ButtonSize = ({size,itemSizeList,updateSizeList}) => {
+  const [selected,setSelected] = useState(false);
+  const onClickAction = () => {
+    setSelected(!selected)
+    if(!selected){
+      updateSizeList(itemSizeList.concat(size));
+      //(itemSizeList.concat(size));
+    }
+    else{
+      if(itemSizeList.length > 0){
+      updateSizeList(itemSizeList.filter(item => item !== size));}
+      //console.log(itemSizeList.filter(item => item !== size));
+    }
+  }
+  return (
+    <Button variant = {selected? "contained" : "outlined"} color = "primary" onClick={onClickAction}>{size}</Button>
+  );
+}
+
 const MediaCard = ({product,itemsSelected, updateItemsSelected }) => {
   const classes = useStyles();
-  const [itemSize, setItemSize] = useState("");
+  const [itemSizeList, updateSizeList] = useState([]);
+  const [addStatus,setAddStatus] = useState(false);
+  const cartItems = itemSizeList;
+  const addToCart = () => {
+      updateItemsSelected(product,cartItems);
+    };
+
   return(
   <Card className={classes.card}>
     <CardActionArea>
@@ -96,13 +120,18 @@ const MediaCard = ({product,itemsSelected, updateItemsSelected }) => {
       <Typography gutterBottom variant="h9" component="h2">{product.title}</Typography>
       <Typography variant="body2" color="textSecondary" component="p">{product.desc}</Typography>
       <Typography variant="body1" color="textPrimary" component="p">${product.price}</Typography>
-      {sizeList.map(size => <SelectSize setItemSize = {setItemSize} selectedSize = {itemSize} size = {size} />)}
+      {sizeList.map(size => <ButtonSize size = {size} itemSizeList={itemSizeList} updateSizeList={updateSizeList}/>)}
+      
     </CardContent>
     </CardActionArea>
     <CardActions>
-        <Button size="small" color="primary" onClick={() => itemSize ? updateItemsSelected(product, itemSize) : alert("Choose product size")}>
-          Add to cart
-        </Button>
+      <Tooltip disableFocusListener title="">
+        <span>
+          <Button size="small" disabled={itemSizeList.length > 0 ? false: true} color="primary" onClick={addToCart}>
+            Add to cart
+          </Button>
+        </span>
+      </Tooltip>
       </CardActions>
   </Card>
   )
@@ -124,19 +153,31 @@ const CardList = ({ products,itemsSelected, updateItemsSelected }) => {
 
 const useSelected = () => {
   const [itemsSelected, updateItemsSelected] = useState([]);
-  const addItemCart = (itm, size) => {
-    updateItemsSelected(
-      itemsSelected.find(product => product.sku === itm.sku) ? itemsSelected.map(product =>
-          product.sku === itm.sku ?
-            { ...product, quantity: product.quantity + 1 }
-            :
-            product
-        )
-        :
-        [{ ...itm, size, quantity: 1 }].concat(itemsSelected)
-    );
-  }
-  return [itemsSelected, addItemCart];
+  const addItemToCart = (product, sizeList) => {
+    let tempItems = [...itemsSelected];
+    //console.log("tempItems", tempItems)
+
+    sizeList.forEach(size => {
+      console.log("size", size)
+      const itemKey = product.sku + size;
+      if (tempItems.find (x => x.key === itemKey)){
+        //console.log("Found", itemKey)
+        tempItems.forEach( (data, index) => {
+            if(data.key === itemKey){
+              let t = tempItems[index]
+              t.quantity = t.quantity + 1
+              tempItems[index] = t
+            }
+        })
+      }
+      else{
+        tempItems = tempItems.concat([{key: itemKey, ...product, size,quantity:1}])
+      }
+      })
+      console.log("tempItems 2", tempItems)
+      updateItemsSelected(tempItems)
+    }      
+  return [itemsSelected, addItemToCart];
 }
 
 const getTotalPrice = ({items}) => {
