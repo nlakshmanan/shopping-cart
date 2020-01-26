@@ -19,6 +19,21 @@ import AddCircleOutlinedIcon from '@material-ui/icons/AddCircleOutlined';
 import RemoveCircleIcon from '@material-ui/icons/RemoveCircle';
 import DeleteIcon from '@material-ui/icons/Delete';
 import Tooltip from '@material-ui/core/Tooltip';
+import firebase from 'firebase/app';
+import 'firebase/database';
+const firebaseConfig = {
+  apiKey: "AIzaSyAyhJmOnKjXwrdNfugfiEsXgaU9WoS6IcI",
+  authDomain: "shoppingcart-a0a90.firebaseapp.com",
+  databaseURL: "https://shoppingcart-a0a90.firebaseio.com",
+  projectId: "shoppingcart-a0a90",
+  storageBucket: "shoppingcart-a0a90.appspot.com",
+  messagingSenderId: "659981250360",
+  appId: "1:659981250360:web:f796b39557aa0b32295bcd",
+  measurementId: "G-CCCJHPRGSF"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database().ref();
 
 const useStyles = makeStyles(theme => ({
   card: {
@@ -303,13 +318,14 @@ const App = () => {
       const json = await response.json();
       setData(json);
     };
-    const fetchInventory = async () => {
-      const response = await fetch("/data/inventory.json");
-      const json = await response.json();
-      setInventory(json);
-    };
     fetchProducts();
-    fetchInventory();
+
+    const handleData = snap => {
+      if (snap.val()) setInventory(snap.val());
+    }
+    db.on('value', handleData, error => alert(error));
+    return () => { db.off('value', handleData); };
+
   }, []);
 
   return (
