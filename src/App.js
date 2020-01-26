@@ -65,6 +65,9 @@ const useStyles = makeStyles(theme => ({
     textAlign: 'center',
     color: theme.palette.text.secondary,
   },
+  addToCart: {
+    display: "None"
+  }
 }));
 
 const CartItemStyles = makeStyles(theme => ({
@@ -158,7 +161,7 @@ const AvailableSizes = ({product,inventory,setInventory,itemsSelected, updateIte
 
 }
 
-const MediaCard = ({product,inventory,setInventory,itemsSelected, updateItemsSelected }) => {
+const MediaCard = ({user, product,inventory,setInventory,itemsSelected, updateItemsSelected }) => {
   const classes = useStyles();
   const [itemSizeList, updateSizeList] = useState([]);
   const cartItems = itemSizeList;
@@ -183,7 +186,7 @@ const MediaCard = ({product,inventory,setInventory,itemsSelected, updateItemsSel
     <CardActions>
       <Tooltip disableFocusListener title="">
         <span>
-          <Button size="small" disabled={itemSizeList.length > 0 ? false: true} color="primary" onClick={addToCart}>
+          <Button className={user === null ? classes.addToCart : null} size="small" disabled={itemSizeList.length > 0 ? false: true} color="primary" onClick={addToCart}>
             Add to cart
           </Button>
         </span>
@@ -193,14 +196,14 @@ const MediaCard = ({product,inventory,setInventory,itemsSelected, updateItemsSel
   )
 };
 
-const CardList = ({ products,inventory,setInventory,itemsSelected, updateItemsSelected }) => {
+const CardList = ({ user,products,inventory,setInventory,itemsSelected, updateItemsSelected }) => {
   const classes = useStyles();
   return (
     <div className={classes.root}>
        <Grid container spacing={3}>
         { products.map(product =>
         <Grid item xs={3}>
-           <MediaCard  product={product} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} updateItemsSelected = {updateItemsSelected}/>
+           <MediaCard user={ user } product={product} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} updateItemsSelected = {updateItemsSelected}/>
            </Grid>) }
         </Grid>
     </div>
@@ -372,7 +375,7 @@ const App = () => {
     <ul>
       <Banner user={ user } />
       <CartDrawer itemsSelected = {itemsSelected} inventory={inventory} setInventory={setInventory} updateItemsSelected = {updateItemsSelected} removeItemFromCart={removeItemFromCart}/>
-      <CardList products = {products} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} updateItemsSelected = {updateItemsSelected}/>
+      <CardList user={ user } products = {products} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} updateItemsSelected = {updateItemsSelected}/>
     </ul>
   );
 };
