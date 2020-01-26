@@ -21,6 +21,8 @@ import DeleteIcon from '@material-ui/icons/Delete';
 import Tooltip from '@material-ui/core/Tooltip';
 import firebase from 'firebase/app';
 import 'firebase/database';
+import 'firebase/auth';
+import StyledFirebaseAuth from 'react-firebaseui/StyledFirebaseAuth';
 const firebaseConfig = {
   apiKey: "AIzaSyAyhJmOnKjXwrdNfugfiEsXgaU9WoS6IcI",
   authDomain: "shoppingcart-a0a90.firebaseapp.com",
@@ -34,6 +36,16 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database().ref();
+
+const uiConfig = {
+  signInFlow: 'popup',
+  signInOptions: [
+    firebase.auth.GoogleAuthProvider.PROVIDER_ID
+  ],
+  callbacks: {
+    signInSuccessWithAuthResult: () => false
+  }
+};
 
 const useStyles = makeStyles(theme => ({
   card: {
@@ -306,9 +318,33 @@ const CartDrawer = ({itemsSelected, inventory , setInventory, updateItemsSelecte
   )
 };
 
+const Banner = ({ user }) => (
+  <React.Fragment>
+    { user ? <Welcome user={ user } /> : <SignIn /> }
+  </React.Fragment>
+);
+
+const Welcome = ({ user }) => (
+      <div>
+      Welcome, {user.displayName}
+      <Button primary onClick={() => firebase.auth().signOut()}>
+        Log out
+      </Button>
+      </div>
+);
+
+const SignIn = () => (
+  <StyledFirebaseAuth
+    uiConfig={uiConfig}
+    firebaseAuth={firebase.auth()}
+  />
+);
+
+
 const App = () => {
   const [data, setData] = useState({});
   const [inventory, setInventory] = useState({});
+  const [user, setUser] = useState(null);
 
   const [itemsSelected, updateItemsSelected,removeItemFromCart] = useSelected();
   const products = Object.values(data);
@@ -328,8 +364,13 @@ const App = () => {
 
   }, []);
 
+  useEffect(() => {
+    firebase.auth().onAuthStateChanged(setUser);
+  }, []);
+
   return (
     <ul>
+      <Banner user={ user } />
       <CartDrawer itemsSelected = {itemsSelected} inventory={inventory} setInventory={setInventory} updateItemsSelected = {updateItemsSelected} removeItemFromCart={removeItemFromCart}/>
       <CardList products = {products} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} updateItemsSelected = {updateItemsSelected}/>
     </ul>
