@@ -137,7 +137,7 @@ const ButtonSize = ({size,itemSizeList,updateSizeList}) => {
   );
 }
 
-const AvailableSizes = ({product,inventory,setInventory,itemsSelected, updateItemsSelected,itemSizeList, updateSizeList}) => {
+const AvailableSizes = ({product,inventory,setInventory,itemsSelected, addItemsSelected,itemSizeList, updateSizeList}) => {
   if (Object.keys(inventory).length === 0) {
     return null;
   }
@@ -161,12 +161,12 @@ const AvailableSizes = ({product,inventory,setInventory,itemsSelected, updateIte
 
 }
 
-const MediaCard = ({user, product,inventory,setInventory,itemsSelected, updateItemsSelected }) => {
+const MediaCard = ({user, product,inventory,setInventory,itemsSelected, addItemsSelected }) => {
   const classes = useStyles();
   const [itemSizeList, updateSizeList] = useState([]);
   const cartItems = itemSizeList;
   const addToCart = () => {
-      updateItemsSelected(product,cartItems,inventory,setInventory);
+      addItemsSelected(user,product,cartItems,inventory,setInventory);
       let tempitemSizeList = itemSizeList
       updateSizeList(tempitemSizeList.filter(size => inventory[product.sku][size] !== 0))
     };
@@ -179,7 +179,7 @@ const MediaCard = ({user, product,inventory,setInventory,itemsSelected, updateIt
       <Typography gutterBottom variant="h9" component="h2">{product.title}</Typography>
       <Typography variant="body2" color="textSecondary" component="p">{product.desc}</Typography>
       <Typography variant="body1" color="textPrimary" component="p">${product.price}</Typography>
-      <AvailableSizes product={product} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} updateItemsSelected = {updateItemsSelected} itemSizeList={itemSizeList} updateSizeList={updateSizeList} />
+      <AvailableSizes product={product} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} addItemsSelected = {addItemsSelected} itemSizeList={itemSizeList} updateSizeList={updateSizeList} />
       
     </CardContent>
     </CardActionArea>
@@ -196,14 +196,14 @@ const MediaCard = ({user, product,inventory,setInventory,itemsSelected, updateIt
   )
 };
 
-const CardList = ({ user,products,inventory,setInventory,itemsSelected, updateItemsSelected }) => {
+const CardList = ({ user,products,inventory,setInventory,itemsSelected, addItemsSelected }) => {
   const classes = useStyles();
   return (
     <div className={classes.root}>
        <Grid container spacing={3}>
         { products.map(product =>
         <Grid item xs={3}>
-           <MediaCard user={ user } product={product} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} updateItemsSelected = {updateItemsSelected}/>
+           <MediaCard user={ user } product={product} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} addItemsSelected = {addItemsSelected}/>
            </Grid>) }
         </Grid>
     </div>
@@ -211,8 +211,12 @@ const CardList = ({ user,products,inventory,setInventory,itemsSelected, updateIt
 };
 
 const useSelected = () => {
-  const [itemsSelected, updateItemsSelected] = useState([]);
-  const addItemToCart = (product, sizeList,inventory,setInventory) => {
+  const [itemsSelected, setItemsSelected] = useState([]);
+  const saveCart = (user,itemsSelected) => {
+    console.log(user.uid,user.email,itemsSelected)
+    db.child('cart').child(user.uid).update({itemsSelected})
+  };
+  const addItemToCart = (user,product, sizeList,inventory,setInventory) => {
     let tempItems = [...itemsSelected];
     let tempInventory = inventory
     //console.log("tempItems", tempItems)
@@ -237,11 +241,11 @@ const useSelected = () => {
       setInventory(tempInventory)
       })
       console.log("tempItems 2", tempItems)
-
-      updateItemsSelected(tempItems)
-    }     
-
-    const removeItemFromCart = (itemKey,inventory,setInventory) => {
+      setItemsSelected(tempItems)
+      saveCart(user,tempItems)
+    } 
+  
+    const removeItemFromCart = (user,itemKey,inventory,setInventory) => {
       let tempInventory = inventory
       let tempItems = itemsSelected
       tempItems.forEach( (data, index) => {
@@ -258,17 +262,42 @@ const useSelected = () => {
       console.log(sku,size)
       tempInventory[sku][size] = tempInventory[sku][size] + 1
       setInventory(tempInventory)
-      updateItemsSelected(tempItems.filter(item => item.quantity !== 0))
+      setItemsSelected(tempItems.filter(item => item.quantity !== 0))
+      saveCart(user,tempItems.filter(item => item.quantity !== 0))
     }
-    return [itemsSelected,addItemToCart,removeItemFromCart];
+
+    const initItemsSelected = (user,items,inventory, setInventory) => {
+      console.log("Init",items);
+      setItemsSelected(items)
+    }
+    return [itemsSelected,initItemsSelected,addItemToCart,removeItemFromCart];
   } 
-  
+ 
+  const cartCheckout = ({itemsSelected}) => {
+    console.log(itemsSelected)
+    const inventoryRef = firebase.database().ref('/inventory')
+    if (itemsSelected.length === 0){
+      alert("Please add items to cart to checkout!!")
+    }
+    else{
+      let tempItems = itemsSelected
+      inventoryRef.transaction(inventory => {
+          if (inventory) {
+              Object.values(itemsSelected).forEach(item => {
+                      inventory[item.sku][item.size] -= item.quantity;
+                  })
+          }
+          return inventory;
+      });
+      alert("Checkout successfull!! Thank you for Shopping!!")
+    }
+  }
 
 
 const getTotalPrice = ({items}) => {
   return <p> {items.reduce((total, p) => total + p.price * p.quantity, 0)} </p>
 }
-const CartDrawer = ({itemsSelected, inventory , setInventory, updateItemsSelected,removeItemFromCart}) => {
+const CartDrawer = ({user,setItemsSelected, itemsSelected, inventory , setInventory, addItemsSelected,removeItemFromCart}) => {
   const classes = CartItemStyles();
   const [state, setState] = useState({right: false});
   const items = itemsSelected;
@@ -291,7 +320,7 @@ const CartDrawer = ({itemsSelected, inventory , setInventory, updateItemsSelecte
                 <br/>Price: ${items.price}
                 <br/>Size: {items.size}
                 <br/>Quantity: {items.quantity}
-                <IconButton onClick= { () => removeItemFromCart(items.key,inventory , setInventory) } edge = "start" color="primary" aria-label="remove one item from cart">
+                <IconButton onClick= { () => removeItemFromCart(user,items.key,inventory , setInventory) } edge = "start" color="primary" aria-label="remove one item from cart">
                 <RemoveCircleIcon />
                 </IconButton>
                 </Card>
@@ -305,6 +334,10 @@ const CartDrawer = ({itemsSelected, inventory , setInventory, updateItemsSelecte
           <ListItem>
             Total price = {getTotalPrice({items})}
           </ListItem>
+          <Button onClick={() => 
+            {cartCheckout(itemsSelected={itemsSelected}, inventory={inventory})
+            setItemsSelected(user,[],inventory, setInventory)}
+            }>Checkout</Button>
       </List>
     </div>
   );
@@ -321,16 +354,21 @@ const CartDrawer = ({itemsSelected, inventory , setInventory, updateItemsSelecte
   )
 };
 
-const Banner = ({ user }) => (
+const Banner = ({ user , setUser}) => (
   <React.Fragment>
-    { user ? <Welcome user={ user } /> : <SignIn /> }
+    { user ? <Welcome setUser={setUser} user={ user } /> : <SignIn /> }
   </React.Fragment>
 );
 
-const Welcome = ({ user }) => (
+const LogOut = (setUser) => {
+  firebase.auth().signOut();
+  setUser(null)
+}
+
+const Welcome = ({user, setUser}) => (
       <div>
       Welcome, {user.displayName}
-      <Button primary onClick={() => firebase.auth().signOut()}>
+      <Button primary onClick={() => LogOut(setUser)}>
         Log out
       </Button>
       </div>
@@ -349,7 +387,7 @@ const App = () => {
   const [inventory, setInventory] = useState({});
   const [user, setUser] = useState(null);
 
-  const [itemsSelected, updateItemsSelected,removeItemFromCart] = useSelected();
+  const [itemsSelected,setItemsSelected, addItemsSelected,removeItemFromCart] = useSelected();
   const products = Object.values(data);
   useEffect(() => {
     const fetchProducts = async () => {
@@ -362,20 +400,37 @@ const App = () => {
     const handleData = snap => {
       if (snap.val()) setInventory(snap.val());
     }
-    db.on('value', handleData, error => alert(error));
-    return () => { db.off('value', handleData); };
-
+    const inventoryRef = firebase.database().ref('/inventory')
+    inventoryRef.on('value', handleData, error => alert(error));
+    return () => { inventoryRef.off('value', handleData); };
   }, []);
 
   useEffect(() => {
     firebase.auth().onAuthStateChanged(setUser);
   }, []);
 
+  useEffect(() => {
+    if(user !== null){
+      const handleData = snap => {
+        //fetch cart item from db
+       // if (snap.val()) setItemsSelected(user,snap.val(),inventory, setInventory);
+      }
+      const cartRef = firebase.database().ref('/cart/' + user.uid )
+      console.log("cartRef",cartRef)
+      cartRef.on('value', handleData, error => alert(error));
+      return () => { cartRef.off('value', handleData); };
+    }
+    else{
+      console.log("user is null")
+      setItemsSelected(user,[],inventory, setInventory);
+    }
+  },[user]);
+
   return (
     <ul>
-      <Banner user={ user } />
-      <CartDrawer itemsSelected = {itemsSelected} inventory={inventory} setInventory={setInventory} updateItemsSelected = {updateItemsSelected} removeItemFromCart={removeItemFromCart}/>
-      <CardList user={ user } products = {products} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} updateItemsSelected = {updateItemsSelected}/>
+      <Banner user={ user } setUser={setUser}/>
+      <CartDrawer user={ user }  setItemsSelected={setItemsSelected} itemsSelected = {itemsSelected} inventory={inventory} setInventory={setInventory} addItemsSelected = {addItemsSelected} removeItemFromCart={removeItemFromCart}/>
+      <CardList user={ user } products = {products} inventory={inventory} setInventory={setInventory} itemsSelected = {itemsSelected} addItemsSelected = {addItemsSelected}/>
     </ul>
   );
 };
